@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>OpenAI HTML整形ツール</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+  <style> textarea { height: 300px; font-family: monospace; } </style>
+</head>
+<body class="container py-4">
+  <h1 class="mb-4"><strong>OpenAI HTML変換ツール</strong></h1>
+  <div class="status-area"></div>
+  <div class="row position-relative">
+    <div class="position-absolute d-none bg-white bg-opacity-50 d-flex justify-content-center align-items-center h-100 loading-overlay" >
+      <div class="spinner-border text-primary" role="status" style="width: 3rem; height: 3rem;">
+        <span class="visually-hidden">Loading...</span>
+      </div>
+    </div>
+    <div class="col-md-6 mb-3">
+      <label for="inputText" class="form-label">入力テキスト</label>
+      <textarea id="inputText" class="form-control" placeholder="ここに元テキストを入力"></textarea>
+    </div>
+    <div class="col-md-6 mb-3">
+      <label for="outputText" class="form-label">HTML出力</label>
+      <textarea id="outputText" class="form-control" readonly></textarea>
+    </div>
+  </div>
+  <div class="mb-3">
+    <div class="mb-3">
+      <select class="form-select" id="selectMode">
+        <option value="html">HTMLに整形</option>
+        <option value="strong" selected>強調ポイントマークアップ</option>
+      </select>
+    </div>
+    <button class="btn btn-primary btn-lg me-2" id="generateBtn">　OpenAIでHTML生成 <span class="invisible spinner-border spinner-border-sm" role="status" aria-hidden="true"></span></button>
+    <button class="btn btn-success" id="downloadBtn" disabled>HTMLをダウンロード</button>
+  </div>
+
+  <script>
+    $("#generateBtn").on("click", function () {
+      const inputText = $("#inputText").val(), selectMode = $("#selectMode").val();
+      $.ajax({
+        url: "openai.php",
+        method: "POST",
+        data: { prompt: inputText, mode:selectMode },
+        dataType: "json",
+        xhr: function() {
+          let xhr = new window.XMLHttpRequest();
+          $('.loading-overlay').removeClass('d-none').addClass('d-block');
+          $('#generateBtn').prop("disabled", true)
+          $('#generateBtn .spinner-border').removeClass('invisible').addClass('visible');
+          console.log('xhr発生');
+          return xhr;
+        },
+        success: function (response) {
+          $('.loading-overlay').removeClass('d-block').addClass('d-none');
+          $('#generateBtn').prop("disabled", false);
+          $('#generateBtn .spinner-border').removeClass('visible').addClass('invisible');
+          console.log('xhr成功');
+          $('.status-area').html('<div class="alert alert-success alert-dismissible fade show" role="alert"><strong>HTMLの変換出力に成功しました<button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button></div>');
+          $("#outputText").val(response.result);
+          $("#downloadBtn").prop("disabled", false);
+        },
+        error: function (xhr) {
+          alert("エラーが発生しました：" + xhr.responseText);
+        }
+      });
+    });
+
+    $("#downloadBtn").on("click", function () {
+      const content = $("#outputText").val();
+      const blob = new Blob([content], { type: "text/html" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = "generated.html";
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    });
+  </script>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js" integrity="sha384-geWF76RCwLtnZ8qwWowPQNguL3RmwHVBC9FhGdlKrxdiJJigb/j/68SIy3Te4Bkz" crossorigin="anonymous"></script>
+</body>
+</html>
