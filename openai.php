@@ -13,7 +13,8 @@ $systemPromptText = '';
 if($mode=='strong'){
   $systemPromptText = 'あなたはHTMLマークアップとWebコンテンツ編集の専門家です。ユーザーから与えられた日本語のhtmlテキスト中の読者に訴求力のある部分を <strong>タグで強調してください。';
 }else if($mode=='figure'){
-  $systemPromptText = "あなたはHTMLマークアップとWebコンテンツ編集の専門家です。以下に与えるHTMLテキストを読み、読者の理解・視覚的メリハリ・UX向上の観点から、
+  $systemPromptText = <<<EOT
+あなたはHTMLマークアップとWebコンテンツ編集の専門家です。以下に与えるHTMLテキストを読み、読者の理解・視覚的メリハリ・UX向上の観点から、
 適切な箇所に図版・写真・動画・アイコンの挿入を提案してください。
 
 挿入形式は以下の形式で明示してください：
@@ -28,7 +29,7 @@ if($mode=='strong'){
 - 元のHTML構造を保ちつつ、挿入ポイントの直後にコメント形式で挿入指示を記述してください
 - 1記事あたり最大6件程度にとどめてください（多すぎると読みにくくなるため）
 - 過剰な繰り返しや装飾は避け、自然な流れに配慮してください
-";
+EOT;
 }else{
   $systemPromptText = 'あなたはHTMLマークアップとWebコンテンツ編集の専門家です。ユーザーから与えられた日本語のテキストをWeb向けに自然なHTML（pタグ、strong、h2など）で出力してください。';
 }
@@ -41,23 +42,23 @@ $data = [
   'temperature' => 0.7
 ];
 
-$options = [
-  'http' => [
-    'method' => 'POST',
-    'header'  => "Content-Type: application/json\r\n" .
-                 "Authorization: Bearer $apiKey\r\n",
-    'content' => json_encode($data)
-  ]
-];
+$ch = curl_init('https://api.openai.com/v1/chat/completions');
+curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+curl_setopt($ch, CURLOPT_HTTPHEADER, [
+    'Content-Type: application/json',
+    'Authorization: Bearer ' . $apiKey
+]);
+curl_setopt($ch, CURLOPT_POST, true);
+curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($data));
 
-$context  = stream_context_create($options);
-$response = file_get_contents('https://api.openai.com/v1/chat/completions', false, $context);
-
-if ($response === FALSE) {
-  echo json_encode(['error' => 'API error']);
-  exit;
+$response = curl_exec($ch);
+if (curl_errno($ch)) {
+    echo json_encode(['error' => curl_error($ch)]);
+    curl_close($ch);
+    exit;
 }
+curl_close($ch);
 
 $resultData = json_decode($response, true);
-$output = $resultData['choices'][0]['message']['content'];
+$output = $resultData['choices'][0]['message']['content'] ?? 'API returned no result';
 echo json_encode(['result' => $output]);
